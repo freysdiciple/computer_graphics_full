@@ -1,0 +1,41 @@
+<!DOCTYPE html> 
+<html>
+    <head>
+        <script src="p2.js"></script>
+        <script src="../../lib/initShaders.js"></script>
+        <script src="../../lib/MV.js"></script>
+        <script src="../../lib/webgl-utils.js"></script>
+    </head>
+    <body>
+        <canvas id ="c" width="512px" height="512"></canvas>
+        <div>
+            <button id="increment-button">Increment</button>
+            <button id="decrement-button">Decrement</button>
+        </div>
+        <script id="vertex-shader" type="x-shader/x-vertex">
+            attribute vec4 a_Position; 
+            uniform mat4 u_M;
+            uniform mat4 u_V;
+            uniform mat4 u_P;
+
+            varying vec4 v_Position;
+
+            void main() { 
+                vec4 pos = u_P * u_V * u_M * a_Position;
+                gl_Position = pos;
+                
+                //We pass position to fragment shader using this varying variable
+                v_Position = pos;
+            }
+        </script>
+        <script id="fragment-shader" type="x-shader/x-fragment">
+            precision mediump float; 
+
+            varying vec4 v_Position;
+            
+            void main() { 
+                gl_FragColor = (v_Position + 0.5) * 0.5;;
+            }
+        </script>
+    </body>
+</html>

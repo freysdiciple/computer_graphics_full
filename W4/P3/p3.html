@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="p3.js"></script>
+    <script src="../../lib/initShaders.js"></script>
+    <script src="../../lib/MV.js"></script>
+    <script src="../../lib/webgl-utils.js"></script>
+</head>
+<body>
+    <canvas id="c" width="512px" height="512"></canvas>
+    <div>
+        <button id="increment-button">Increment</button>
+        <button id="decrement-button">Decrement</button>
+        <button id="orbit-button">Toggle Orbit</button>
+    </div>
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec4 a_Position; 
+        uniform mat4 u_M;
+        uniform mat4 u_V;
+        uniform mat4 u_P;
+        
+        varying vec4 v_WorldPosition;
+
+        void main() { 
+            v_WorldPosition = u_M * a_Position;
+            gl_Position = u_P * u_V * v_WorldPosition;
+        } 
+    </script>
+    
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float; 
+
+        uniform vec3 u_LightPosition;
+        uniform vec3 u_LightColor;
+        uniform vec3 u_AmbientLight;
+
+        varying vec4 v_WorldPosition;
+
+        void main() {
+
+            vec3 normal = normalize(vec3(v_WorldPosition));
+
+            vec3 lightDirection = normalize(u_LightPosition - vec3(v_WorldPosition));
+
+            vec3 light = u_AmbientLight + u_LightColor * max(dot(lightDirection, normal), 0.0);
+
+            gl_FragColor = vec4(light, 1.0);
+        }
+    </script>
+</body>
+</html>

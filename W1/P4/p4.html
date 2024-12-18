@@ -1,0 +1,28 @@
+<!DOCTYPE html> 
+<html>
+    <head>
+        <script src="p4.js"></script>
+        <script src="../../lib/initShaders.js"></script>
+        <script src="../../lib/MV.js"></script>
+        <script src="../../lib/webgl-utils.js"></script>
+    </head>
+    <body>
+        <script id="vertex-shader" type="x-shader/x-vertex">
+            attribute vec4 a_Position;
+            uniform mat4 u_RotationMatrix;
+        
+            void main() {
+                gl_Position = u_RotationMatrix * a_Position;
+            }
+        </script>
+        
+        <script id="fragment-shader" type="x-shader/x-fragment">
+            precision mediump float;
+        
+            void main() {
+                gl_FragColor = vec4(1, 1, 1, 1);
+            }
+        </script>
+        <canvas id ="c" width="512px" height="512"></canvas>
+    </body>
+</html>

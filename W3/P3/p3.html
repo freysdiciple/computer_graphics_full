@@ -1,0 +1,58 @@
+<!DOCTYPE html> 
+<html>
+    <head>
+        <script src="p3.js"></script>
+        <script src="../../lib/initShaders.js"></script>
+        <script src="../../lib/MV.js"></script>
+        <script src="../../lib/webgl-utils.js"></script>
+    </head>
+    <body>
+        <canvas id ="c" width="512px" height="512"></canvas>
+        <h3>Matrices in Part 1</h3>
+        <p>
+            In the first part we use three matrices in the vertex shader: model, view, and projection. <br/>
+            The model matrix we pass to the shader, consists of two rotation matrices (one for the x-axis, and one for the y-axis) multiplied together to combine them into one (R = Rx * Ry).<br/>
+            We rotate by about 45 degrees on the x-axis, and about 35 degrees on the y-axis to approximate the isometric view.<br/>
+            For the view matrix, we specify that our eye is placed 1 unit away on the z-axis, that we are looking at the origin, and the camera is not tilted (the up-vector points directly up).<br/>
+            Using the math described on the slides, we create a matrix which correctly translates from world coordinates into eye space.<br/>
+            Lastly we use an orthographic, which lets us discard depth information while maintaining parallel lines and uniform scaling.<br/> 
+            Unlike perspective projection, where objects farther away appear smaller, we can preserve the relative sizes of objects using orthographic projection.<br/>
+            In the vertex shader, we multiply all the matrices together (Transform = Model * View * Perspective) before multiplying the vector for the current vertex onto it (Transform * vector), to transform the vertex coordinates from world coordinates into our new base.
+        </p>
+        <h3>Matrices in Part 2</h3>
+        <p>
+            Like in Part 1, we pass the same three types of transformation matrices to the vertex shader, where they are multiplied to provide the wanted transformation.<br/>
+            But in Part 2 we implement two major differences. Firstly we use multiple matrices for each type, one for each square we draw, and pass the new ones to the vertex shader before drawing the next square.<br/>
+            Secondly, we use perspective projection, we means we see the objects getting smaller the further away they are, which also means we get vanishing points.<br/>
+            We can manipulate how many vanishing points we get, by rotating the objects on mutiple axis:
+            <ul>
+                <li>R = I for 1 vanishing point</li>
+                <li>R = Rx where Rx != I for 2 vanishing points</li>
+                <li>R = Rx * Ry where Rx != I and Ry != I for 3 vanishing points</li>
+            </ul>
+            The calculations above assume we are using a cube facing the camera.
+        </p>
+        <script id="vertex-shader" type="x-shader/x-vertex">
+            attribute vec4 a_Position; 
+            uniform mat4 u_M;
+            uniform mat4 u_V;
+            uniform mat4 u_P;
+            attribute vec4 a_Color;
+            varying vec4 v_Color;
+
+            void main() { 
+                v_Color = a_Color; 
+                gl_Position = u_P * u_V * u_M * a_Position;
+                gl_PointSize = 20.0;
+            }
+        </script>
+        <script id="fragment-shader" type="x-shader/x-fragment">
+            precision mediump float; 
+            varying vec4 v_Color;
+            
+            void main() { 
+                gl_FragColor = v_Color;
+            }
+        </script>
+    </body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html> 
+<html>
+    <head>
+        <script src="p1.js"></script>
+        <script src="../../lib/initShaders.js"></script>
+        <script src="../../lib/MV.js"></script>
+        <script src="../../lib/webgl-utils.js"></script>
+    </head>
+    <body>
+        <canvas id ="c" width="512px" height="512"></canvas>
+        <script id="vertex-shader" type="x-shader/x-vertex">
+            attribute vec4 a_Position; 
+            attribute vec2 a_TexCoord; 
+            uniform mat4 u_P;
+            varying vec2 fTexCoord;  // Pass texture coordinates to the fragment shader
+        
+            void main() { 
+                gl_Position = u_P * a_Position;
+                fTexCoord = a_TexCoord; // Pass texture coordinates
+                gl_PointSize = 20.0;
+            }
+        </script>
+        <script id="fragment-shader" type="x-shader/x-fragment">
+            precision mediump float; 
+            uniform sampler2D texMap;        
+            varying vec2 fTexCoord;         
+            void main() {           
+                gl_FragColor = texture2D(texMap, fTexCoord);         
+            }
+        </script>
+    </body>
+</html>

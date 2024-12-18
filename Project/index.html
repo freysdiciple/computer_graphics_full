@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="lib/init-shaders.js"></script>
+    <script src="lib/init-handlers.js"></script>
+    <script src="lib/MV.js"></script>
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/matcap-utils.js"></script>
+    <script src="lib/obj-utils.js"></script>
+    <script src="lib/modal-utils.js"></script>
+    <script src="lib/OBJParser.js"></script>
+    <script src="lib/sphere-utils.js"></script>
+    <script src="index.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <canvas id="obj-canvas"></canvas>
+    <div class="page-title">MatCap Editor</div>
+    <div id="obj-plus" class="obj-upload-box">Upload your own model</div>
+    <ul id="imageList"></ul>
+
+    <div id="modal" class="modal">
+        <div id="modal-body" class="modal-body">
+            <div id="upload-obj-modal-body">
+                <div class="modal-title">Upload an Object File</div>
+                <p style="font-size: 11px;">The .obj must only contain a single object. To ensure compatibility, use a simple low poly object.</p>
+                <input type="file" id="fileInput" accept=".obj">
+                <button id="uploadButton">Upload</button>
+            </div>
+            <div id="upload-matcap-modal-body">
+                <div class="tabs-header">
+                    <div class="tab-header chosen">Create</div>
+                    <div class="tab-header">Upload</div>
+                </div>
+                <div class="tabs-body">
+                    <div class="tab-body chosen">
+                        <div class="modal-title">Create a Matcap</div>
+                        <div style="display: flex; gap: 8px;">
+                            <div style="position: relative;">
+                                <canvas id="edit-matcap-canvas" width="256" height="256" style="display: block; width: 256px; height: 256px;"></canvas>
+                                <div id="sun-container"></div>
+                            </div>
+                            <div>
+                                <label>Sphere Color:</label>
+                                <div style="margin-bottom: 8px">
+                                    <input type="color" id="edit-matcap-color" />
+                                </div>
+                                <label>Shininess:</label>
+                                <div style="margin-bottom: 8px">
+                                    <input id="shininess" type="range" min="1" max="128" value="32"/>
+                                </div>
+                                <label>Ambient:</label>
+                                <div style="margin-bottom: 8px">
+                                    <input id="ambient-strength" type="range" min="0" max="100" value="50"/>
+                                </div>
+                                <label>Texture Image:</label>
+                                <div><label style="font-size: 11px">Dimensions must be powers of 2.</label></div>
+                                <div><label style="font-size: 11px">Image must be .png, .jpg or .jpeg.</label></div>
+                                <div style="margin-bottom: 8px; margin-top: 6px;">
+                                    <input id="sphere-texture-input" type="file"/>
+                                </div>
+                                <button id="create_button_matcap">Create Matcap</button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label>Light Sources:</label>
+                            <label style="font-size: 11px;">(Drag the suns above to move the lights)</label>
+                            <div id="light-source-list" style="margin-bottom: 8px; margin-top: 8px;">
+
+                            </div>
+                            <button id="add-light-button">Add Light</button>
+                        </div>
+                    </div>
+                    <div class="tab-body">
+                        <div class="modal-title">Upload a Matcap File</div>
+                        <input type="file" id="fileInputMatcap" accept=".png">
+                        <button id="uploadButtonMatcap">Upload</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vertex Shader -->
+    <script id="obj-vertex-shader" type="x-shader/x-vertex">
+        attribute vec4 a_Position;
+        attribute vec4 a_Normal;
+
+        uniform mat4 u_Model;
+        uniform mat4 u_View;
+        uniform mat4 u_Projection;
+
+        varying vec3 v_Normal;
+            
+        void main() {
+            mat4 world = u_View * u_Model;
+            gl_Position = u_Projection * u_View * u_Model * a_Position;
+            v_Normal = normalize(vec3(world * a_Normal));
+        }
+    </script>
+    <script id="edit-vertex-shader" type="x-shader/x-vertex">
+        attribute vec3 a_Position;
+        attribute vec3 a_Normal;
+    
+        uniform mat4 u_Projection;
+        uniform mat4 u_View;
+        uniform mat4 u_Model;
+        uniform vec3 u_ViewPosition;
+    
+        varying vec3 v_Normal;
+        varying vec3 v_Position;
+        varying vec2 v_TexCoord;
+        varying vec3 v_ViewDirection;
+    
+        void main() {
+            //Calculate relevant vectors
+            v_Position = vec3(u_Model * vec4(a_Position, 1.0));
+            v_Normal = mat3(u_Model) * a_Normal;
+            v_ViewDirection = normalize(u_ViewPosition - vec3(v_Position));
+    
+            //Calculate texture coordinates
+            vec3 normalizedPosition = normalize(a_Position);
+            float PI = 3.141592653589793;
+            float u = 0.5 + atan(normalizedPosition.z, normalizedPosition.x) / (2.0 * PI);
+            float v = 0.5 - asin(normalizedPosition.y) / PI;
+            v_TexCoord = vec2(u, v);
+    
+            //Transform vertices into eye coordinates
+            gl_Position = u_Projection * u_View * vec4(v_Position, 1.0);
+        }
+    </script>
+    
+
+
+    <!-- Fragment Shader -->
+    <script id="obj-fragment-shader" type="x-shader/x-fragment">
+        precision mediump float;
+
+        uniform sampler2D u_MatcapTexture;
+        varying vec3 v_Normal;
+        
+        void main() {
+            highp vec2 muv = vec2(normalize(v_Normal)) * 0.5 + vec2(0.5, 0.5);
+            gl_FragColor = texture2D(u_MatcapTexture, vec2(muv.x, 1.0 - muv.y));
+        }
+    </script>
+    <script id="edit-fragment-shader" type="x-shader/x-fragment">
+        precision mediump float;
+    
+        uniform vec3 u_LightPositions[5];
+        uniform vec3 u_LightColors[5];
+        uniform float u_LightStrengths[5];
+        uniform int u_LightCount;
+    
+        uniform vec3 u_ViewPosition;
+        uniform float u_Shininess;
+        uniform vec3 u_SphereColor;
+        uniform float u_AmbientStrength;
+    
+        uniform sampler2D u_Texture;
+        uniform bool u_UseTexture; 
+    
+        varying vec2 v_TexCoord;
+        varying vec3 v_Normal;
+        varying vec3 v_Position;
+        varying vec3 v_ViewDirection;
+    
+        void main() {
+            vec3 norm = normalize(v_Normal);
+            vec3 resultColor = u_SphereColor * u_AmbientStrength;
+    
+            //For each light-source defined in the UI
+            for (int i = 0; i < 5; i++) {
+                if (i >= u_LightCount) break;
+    
+                //Diffuse
+                vec3 lightDir = normalize(u_LightPositions[i] - v_Position);
+                vec3 diffuse = u_LightStrengths[i] * u_LightColors[i] * max(dot(norm, lightDir), 0.0);
+    
+                //Specular
+                vec3 halfwayDir = normalize(lightDir + v_ViewDirection);
+                vec3 specular = u_LightStrengths[i] * u_LightColors[i] * pow(max(dot(norm, halfwayDir), 0.0), u_Shininess);
+    
+                //Combine diffuse and specular
+                resultColor += (diffuse + specular);
+            }
+    
+            //If a reflection image is provided, map it to the sphere
+            if (u_UseTexture) {
+                vec4 textureColor = texture2D(u_Texture, v_TexCoord);
+                resultColor *= textureColor.rgb;
+            }
+    
+            gl_FragColor = vec4(resultColor, 1.0);
+        }
+    </script>        
+</body>
+</html>

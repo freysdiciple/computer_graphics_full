@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="p4.js"></script>
+    <script src="../../lib/initShaders.js"></script>
+    <script src="../../lib/MV.js"></script>
+    <script src="../../lib/webgl-utils.js"></script>
+</head>
+
+<body>
+    <canvas id="c" width="512px" height="512"></canvas>
+    <div>
+        <button id="increment-button">Increment</button>
+        <button id="decrement-button">Decrement</button>
+        <button id="orbit-button">Toggle Orbit</button>
+    </div>
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec4 a_Position; 
+        attribute vec3 a_Normal; 
+
+        varying vec3 v_CubeMapCoord; 
+        
+       varying vec3 v_PositionWorld;
+
+
+        uniform mat4 u_M;
+        uniform mat4 u_V;
+        uniform mat4 u_P;
+        
+        
+        varying vec3 v_Normal; 
+        
+        uniform mat4 u_Mtex;
+        uniform bool u_IsBackground;
+
+    
+        void main() { 
+            if (u_IsBackground) {
+                gl_Position = a_Position; 
+                
+                vec4 worldDir = u_Mtex * a_Position;
+                v_CubeMapCoord = normalize(worldDir.xyz);      
+                
+            } else {
+                vec4 pos = u_M * a_Position;
+                gl_Position = u_P * u_V * pos;
+                
+                v_PositionWorld=pos.xyz;
+        
+                v_Normal = normalize(mat3(u_M) * a_Normal);
+        
+                v_CubeMapCoord = vec3(u_M * a_Position);
+        
+             
+                
+            }
+        }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float; 
+        
+        varying vec3 v_CubeMapCoord;
+        varying vec3 v_PositionWorld;
+        varying vec2 v_NormalMapCoord; 
+        varying vec3 v_Normal; 
+        
+        uniform samplerCube texMap; 
+        uniform sampler2D normalMap; 
+        uniform vec3 u_AmbientLight;
+
+        uniform vec3 u_EyePosition;
+        uniform bool u_Reflective;
+        uniform bool u_IsBackground;
+
+
+        vec3 rotate_to_normal(vec3 n, vec3 v) {
+            float sgn_nz = sign(n.z + 1.0e-16);
+            float a = -1.0 / (1.0 + abs(n.z));
+            float b = n.x * n.y * a;
+            return vec3(1.0 + n.x * n.x * a, b, -sgn_nz * n.x) * v.x
+                 + vec3(sgn_nz * b, sgn_nz * (1.0 + n.y * n.y * a), -n.y) * v.y
+                 + n * v.z;
+        }
+
+        vec2 calculate_spherical_coords(vec3 pos) {
+            vec3 posNormalized=normalize(pos);
+            float u = 0.5 + atan(posNormalized.z, posNormalized.x) / (2.0 * 3.14159265358979323846264); 
+            float v = 0.5 - asin(posNormalized.y) / 3.14159265358979323846264;
+            return vec2(u, v);
+        }
+        void main() { 
+
+            if (u_IsBackground) {
+                gl_FragColor = textureCube(texMap, v_CubeMapCoord);
+            } else {
+
+            vec3 viewDir = normalize(u_EyePosition - v_CubeMapCoord);
+
+
+            vec2 v_NormalMapCoord = calculate_spherical_coords(v_PositionWorld);
+
+            vec3 normalMapNormal = texture2D(normalMap, v_NormalMapCoord).rgb * 2.0-1.0;
+    
+            vec3 perturbedNormal = rotate_to_normal(normalize(v_Normal), normalMapNormal);
+            
+            vec3 reflectionDir = reflect(viewDir,normalize(u_Reflective ? perturbedNormal : v_Normal));
+
+            if (u_Reflective) reflectionDir.y = -reflectionDir.y;
+            
+            vec4 textureColor = textureCube(texMap, reflectionDir);
+    
+            vec3 ambient = u_AmbientLight * vec3(textureColor); 
+            
+            gl_FragColor = vec4(ambient, textureColor.a);
+        }
+        }
+    </script>
+
+</body>
+
+</html>

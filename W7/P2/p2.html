@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="p2.js"></script>
+    <script src="../../lib/initShaders.js"></script>
+    <script src="../../lib/MV.js"></script>
+    <script src="../../lib/webgl-utils.js"></script>
+</head>
+
+<body>
+    <canvas id="c" width="512px" height="512"></canvas>
+    <div>
+        <button id="increment-button">Increment</button>
+        <button id="decrement-button">Decrement</button>
+        <button id="orbit-button">Toggle Orbit</button>
+    </div>
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec4 a_Position; 
+        attribute vec3 a_Normal; 
+        varying vec3 v_TexCoord; 
+        uniform mat4 u_M;
+        uniform mat4 u_V;
+        uniform mat4 u_P;
+        
+        
+        varying vec3 v_Normal; 
+        
+        uniform mat4 u_Mtex;
+        uniform bool u_IsBackground;
+
+    
+        void main() { 
+            if (u_IsBackground) {
+                gl_Position = a_Position;  
+                
+                vec4 worldDir = u_Mtex * a_Position;
+                v_TexCoord = normalize(worldDir.xyz); 
+                
+            } else {
+                vec4 pos = u_M * a_Position;
+                gl_Position = u_P * u_V * pos;
+                gl_PointSize = 10.0;
+        
+                v_Normal = normalize(mat3(u_M) * a_Normal);
+               
+                v_TexCoord = v_Normal;
+            }
+        }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float; 
+        varying vec4 v_Color;
+        varying vec3 v_TexCoord; 
+        varying vec3 v_Normal; 
+        
+        uniform samplerCube texMap; 
+        
+        uniform vec3 u_AmbientLight;
+    
+        void main() { 
+            vec4 textureColor = textureCube(texMap, normalize(v_TexCoord));
+    
+            vec3 ambient = u_AmbientLight * vec3(textureColor);
+            
+            gl_FragColor = vec4(ambient, textureColor.a);
+        }
+    </script>
+
+</body>
+
+</html>

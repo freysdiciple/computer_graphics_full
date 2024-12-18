@@ -1,0 +1,65 @@
+<!DOCTYPE html> 
+<html>
+<head>
+    <script src="p2.js"></script>
+    <script src="../../lib/initShaders.js"></script>
+    <script src="../../lib/MV.js"></script>
+    <script src="../../lib/webgl-utils.js"></script>
+    <style>
+        .p2-options {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id ="c" width="512px" height="512"></canvas>
+    
+    <!-- Dropdown for Texture Wrapping Mode -->
+    <div class="p2-options">
+        <label for="wrapMode">Texture Wrapping</label>
+        <select id="wrapMode">
+            <option value="REPEAT">Repeat</option>
+            <option value="CLAMP_TO_EDGE">Clamp to Edge</option>
+        </select>
+    </div>
+
+    <div class="p2-options">
+        <!-- Dropdown for Texture Filtering Mode -->
+        <label for="filterMode">Texture Filtering</label>
+        <select id="filterMode">
+            <option value="NEAREST">Nearest</option>
+            <option value="LINEAR">Linear</option>
+            <option value="NEAREST_MIPMAP_NEAREST">Nearest Mipmap Nearest</option>
+            <option value="LINEAR_MIPMAP_NEAREST">Linear Mipmap Nearest</option>
+            <option value="NEAREST_MIPMAP_LINEAR">Nearest Mipmap Linear</option>
+            <option value="LINEAR_MIPMAP_LINEAR">Linear Mipmap Linear</option>
+        </select>
+    </div>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec4 a_Position; 
+        attribute vec2 a_TexCoord; 
+        uniform mat4 u_P;
+        varying vec2 fTexCoord;  // Pass texture coordinates to the fragment shader
+
+        void main() { 
+            gl_Position = u_P * a_Position;
+            fTexCoord = a_TexCoord; // Pass texture coordinates
+            gl_PointSize = 20.0;
+        }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        precision mediump float; 
+        uniform sampler2D texMap;        
+        varying vec2 fTexCoord;         
+        void main() {           
+            gl_FragColor = texture2D(texMap, fTexCoord);         
+        }
+    </script>
+</body>
+</html>
